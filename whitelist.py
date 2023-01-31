@@ -15,7 +15,6 @@ elif system == 'Windows':
 
 API = 'https://api.mojang.com/users/profiles/minecraft/'
 PATH = 1
-OP = 2
 
 
 def open_json(path):
@@ -44,7 +43,7 @@ def show(whitelist, op):
     print('Exit: ctrl+c')
     print('Switch mode: enter')
 
-    print('\n')
+    print()
     if (len(whitelist) > 0):
         separator()
     for player in whitelist:
@@ -86,13 +85,13 @@ def pop_player(name, whitelist):
 
 
 def main():
-    if len(sys.argv) < 3 or (sys.argv[OP] != 'add' and sys.argv[OP] != 'pop'):
+    if len(sys.argv) < 2:
         print('Usage:')
-        print(f'\tpython3 {sys.argv[0]} <filepath> <pop|add>', end='\n\n')
+        print(f'\tpython3 {sys.argv[0]} <filepath>', end='\n\n')
         exit(1)
 
     path = sys.argv[PATH]
-    op = sys.argv[OP]
+    op = 'add'
 
     whitelist = open_json(path)
     change = True
