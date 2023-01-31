@@ -4,6 +4,8 @@ import os
 import platform
 import sys
 import urllib.request
+from urllib.parse import quote
+from urllib.error import HTTPError
 
 system = platform.system()
 if system == 'Linux':
@@ -11,14 +13,10 @@ if system == 'Linux':
 elif system == 'Windows':
     def clear(): return os.system('cls')
 
-api = 'https://api.mojang.com/users/profiles/minecraft/'
+API = 'https://api.mojang.com/users/profiles/minecraft/'
 OK = 200
-
-if len(sys.argv) < 3:
-    print('Usage:')
-    print(f'\t{sys.argv[0]} <filepath> <pop | add>')
-    print()
-    exit(1)
+PATH = 1
+OP = 2
 
 
 def open_json(path):
@@ -33,62 +31,108 @@ def separator():
     print('------------------------------------')
 
 
-def show(whitelist):
+def show(whitelist, op):
     clear()
+
     separator()
+    op_title = ''
+    if op == 'add':
+        op_title = f'\033[92m  Add players \033[0m({len(whitelist)})'
+    else:
+        op_title = f'\033[91mRemove players \033[0m({len(whitelist)})'
+    print(f'         {op_title}      ')
+    separator()
+    print('Exit: ctrl+c')
+    print('Switch mode: enter')
+
+    print('\n')
+    if (len(whitelist) > 0):
+        separator()
     for player in whitelist:
         print(player['name'])
         print(player['uuid'])
         separator()
-    print()
-    print(f'Players: {len(whitelist)}', end='\n\n')
 
 
-def save(whitelist):
-    with open('whitelist.json', 'w') as f:
+def save(file, whitelist):
+    with open(file, 'w') as f:
         json.dump(whitelist, f, indent=2)
 
 
-def add_player(whitelist: list):
-    name = input('Add player: ')
-    resp = urllib.request.urlopen(api + name)
+def add_player(player_name, whitelist: list):
+    change = False
 
-    if resp.getcode() is OK:
+    try:
+        resp = urllib.request.urlopen(API+quote(player_name))
         player: dict = json.loads(resp.read())
         player['uuid'] = player.pop('id')
 
         if not any(p['uuid'] == player['uuid'] for p in whitelist):
             whitelist.append(player)
+            change = True
+
+    except HTTPError as e:
+        if e.code == 404:
+            print('\033[91mName not found\033[0m', end='\n\n')
+        if e.code == 400:
+            print('\033[91mIllegal name\033[0m', end='\n\n')
+
+    return whitelist, change
 
 
-def pop_player(whitelist):
-    name = input('Remove player: ')
-    whitelist = list(filter(lambda p: p['name'] != name, whitelist))
-    return whitelist
+def pop_player(name, whitelist):
+    whitelist = list(filter(lambda p: p['name'].upper() != name.upper(),
+                            whitelist))
+    return whitelist, True
 
 
 def main():
-    path = sys.argv[1]
-    op = sys.argv[2]
+    if len(sys.argv) < 3 or (sys.argv[OP] != 'add' and sys.argv[OP] != 'pop'):
+        print('Usage:')
+        print(f'\tpython3 {sys.argv[0]} <filepath> <pop|add>', end='\n\n')
+        exit(1)
+
+    path = sys.argv[PATH]
+    op = sys.argv[OP]
 
     whitelist = open_json(path)
-    length = len(whitelist)
+    change = True
     while True:
         try:
-            show(whitelist)
+            if change:
+                show(whitelist, op)
+                change = False
+            
+            op_title = ''
+            if op == 'add':
+                op_title = '\033[92m> \033[0m '
+            else:
+                op_title = '\033[91m> \033[0m'
+
+            usr_inpt = input(op_title)
             if op == 'pop':
-                whitelist = pop_player(whitelist)
+                if usr_inpt.strip() == '':
+                    op = 'add'
+                    change = True
+                    continue
+                (whitelist, change) = pop_player(usr_inpt, whitelist)
             elif op == 'add':
-                add_player(whitelist)
-            if len(whitelist) != length:
-                save(whitelist)
-            length = len(whitelist)
+                if usr_inpt.strip() == '':
+                    op = 'pop'
+                    change = True
+                    continue
+                (whitelist, change) = add_player(usr_inpt, whitelist)
+
+            if change:
+                save(path, whitelist)
+
         except KeyboardInterrupt:
             clear()
             exit(0)
         except Exception as e:
-            print('Woops, somethings wrong :S', end='\n\n')
-            print(e)
+            print('Error:')
+            print(e, file=sys.stderr)
+            exit(1)
 
 
 if __name__ == '__main__':
