@@ -14,7 +14,6 @@ elif system == 'Windows':
     def clear(): return os.system('cls')
 
 API = 'https://api.mojang.com/users/profiles/minecraft/'
-OK = 200
 PATH = 1
 OP = 2
 
@@ -102,7 +101,7 @@ def main():
             if change:
                 show(whitelist, op)
                 change = False
-            
+
             op_title = ''
             if op == 'add':
                 op_title = '\033[92m> \033[0m '
