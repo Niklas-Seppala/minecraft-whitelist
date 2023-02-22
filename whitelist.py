@@ -3,6 +3,7 @@ import json
 import os
 import platform
 import sys
+import uuid
 import urllib.request
 from urllib.parse import quote
 from urllib.error import HTTPError
@@ -63,7 +64,7 @@ def add_player(player_name, whitelist: list):
     try:
         resp = urllib.request.urlopen(API+quote(player_name))
         player: dict = json.loads(resp.read())
-        player['uuid'] = player.pop('id')
+        player['uuid'] = str(uuid.UUID(player.pop('id')))
 
         if not any(p['uuid'] == player['uuid'] for p in whitelist):
             whitelist.append(player)
